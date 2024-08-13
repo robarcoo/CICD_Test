@@ -1,9 +1,54 @@
-The study project aims to explore the implementation and practical application of GitLab CI/CD (Continuous Integration and Continuous Deployment) within a controlled environment, utilizing an Ubuntu Server Virtual Machine (VM). The primary objective of this project is to enhance understanding of DevOps practices through hands-on experience in automating the development, testing, and deployment processes. The initial phase includes configuring an Ubuntu Server VM that serves as the CI/CD host. This VM is equipped with GitLab Runner, a key component that enables the execution of jobs defined in the CI/CD pipeline. The environment is prepared to handle specific Linux networking tasks necessary for deployment to another VM.
+# Basic CI/CD
 
-A comprehensive pipeline created using a .gitlab-ci.yml configuration file. This file defines various stages of the pipeline, including:
+Разработка простого **CI/CD** для проекта _SimpleBashUtils_. Сборка, тестирование, развертывание.
 
-  - Code Style Tests: Automated code style checks will be performed to ensure that the code adheres to defined style guidelines. This phase will utilize linters and formatters suitable for the programming languages being used, thereby promoting code quality and consistency.
-  - Integration Tests: Following the code style validation, integration tests will be conducted to verify the interactions between different components of the application. This will ensure that all parts of the system function together as expected, identifying any potential issues before deployment.
-  - Upon successful completion of the tests, the project will be automatically deployed to a secondary virtual machine. This deployment process will leverage knowledge of Linux networking principles to facilitate seamless communication between the source VM (hosting the CI/CD pipeline) and the target VM (where the application will be deployed). The deployment will be executed in a manner that minimizes downtime and ensures that the application is delivered in a stable state.
+### Part 1. Настройка **gitlab-runner**
 
-![image](https://github.com/user-attachments/assets/41e36508-965c-470e-b24c-aa387d8db8cd)
+##### Скачать и установить на виртуальную машину **gitlab-runner**
+
+Воспользуемся инструкцией из официальной документации gitlab-runner
+
+1. Скачаем нужный пакет.
+
+```
+# Replace ${arch} with any of the supported architectures, e.g. amd64, arm, arm64
+curl -LJO "https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_${arch}.deb"
+```
+
+2. Установим gitlab-runner, используя скачанный пакет.
+
+```
+dpkg -i gitlab-runner_<arch>.deb
+```
+
+##### Запустить **gitlab-runner** и зарегистрировать его для использования в текущем проекте (_DO6_CICD_)
+
+1. Вводим команду sudo gitlab-runner register.
+2. Вводим URL https://repos.21-school.ru из поля в самом начале таска.
+3. Вводим токен из поля в самом начале таска.
+4. Описание раннера. Я ничего особо осмысленного там не писала, но описание можно поменять позже.
+5. Теги. Это очень важное поле, если неправильно указать тег, то пайплайн будет застревать, так как не будет активных раннеров. Поменять эти теги в этом проекте нельзя, потому нам, смертным пирам, запрещено лезть в настройки проекта, поэтому в случае ошибки придется перерегистрировать раннер, но на практике это проблема решается гораздо легче.
+6. Maintance note. Можно оставить пустым.
+7. Runner executor. Это исполнитель, на котором можно запускать сборки. В нашем случае выбираем shell, но чаще всего используется докер.
+8. Вводим команду sudo gitlab-runner start. Раннер запустился.
+
+### Part 2. Сборка
+
+#### Написать этап для **CI** по сборке приложений из проекта _C2_SimpleBashUtils_:
+
+Чтобы все заработало, пушим файлы с проектом C2_SimpleBashUtils в папку src и файл .gitlab-ci.yml в корневую директорию проекта. Пайплайн начнется автоматически, его работу можно отслеживать во вкладке "CI/CD". Нажав на отдельный job, можно посмотреть логи и вывод использованных команд.
+
+![logs](src/img/2.PNG)
+
+Похожим образом пишем Part 3 и Part 4. И нужно обязательно не забывать установить различные утилиты на работающую машину, иначе пайплайн не будет работать.
+
+### Part 5. Этап деплоя
+
+Что делаем:
+
+1. Соединяем первую и вторую машины, включив в "Сеть" у обоих второй адаптер. Второй адаптер проставляем как "Внутренняя сеть".
+2. Редактируем конфиг в netplan, чтобы обе машины могли общаться между собой, принимаем настройки и через ping проверяем, что машины слышат друг друга.
+3. Хорошо подходит утилита expect для переброски и установки файлов на удаленный сервер, однако она работает отдельно в файле с расширением exp.
+4. Нам нужен bash файл, поэтому создаем deploy.sh и оттуда вызываем deploy.exp, где написаны все нужные команды для работы с файлами.
+
+![file_transfer](src/img/3.png)
