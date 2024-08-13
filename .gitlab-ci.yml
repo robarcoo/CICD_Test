@@ -1,0 +1,44 @@
+default:
+  tags: [build-job, test-job1, test-job2, deploy-prod]
+
+stages:
+  - build
+  - style
+  - test
+  - deploy
+
+build-job:
+  stage: build
+  script:
+    - cd src/cat/
+    - make s21_cat
+    - cd ../grep/
+    - make s21_grep
+  artifacts:
+    paths:
+      - src/cat/s21_cat
+      - src/grep/s21_grep
+    expire_in: 30 days
+
+test-job1:
+  stage: style
+  script:
+    - cd src/cat/
+    - clang-format -n -style=google *.c *.h
+    - cd ../grep
+    - clang-format -n -style=google *.c *.h
+
+test-job2:
+  stage: test
+  script:
+    - cd src/cat/
+    - make test
+    - cd ../grep
+    - make test
+  allow_failure: false
+
+deploy-prod:
+  stage: deploy
+  script:
+    - cd src
+    - sh deploy.sh
